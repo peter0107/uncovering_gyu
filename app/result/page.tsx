@@ -71,6 +71,9 @@ export default function ResultPage() {
   function handleRestart() {
     localStorage.removeItem('uncovering_missions')
     localStorage.removeItem('uncovering_result')
+    localStorage.removeItem('uncovering_thetas')
+    localStorage.removeItem('uncovering_axis_history')
+    localStorage.removeItem('uncovering_completed_ids')
     router.push('/')
   }
 

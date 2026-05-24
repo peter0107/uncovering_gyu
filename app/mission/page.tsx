@@ -103,16 +103,12 @@ export default function MissionPage() {
     const rawScore = reactionsToRawScore(reactions)
     const u = rawScore / 10
 
-    // 모든 축의 능력치 업데이트
-    const newThetas: Theta = {
-      창의발산: updateTheta(thetas.창의발산, mission.scores.창의발산, rawScore),
-      사람관계: updateTheta(thetas.사람관계, mission.scores.사람관계, rawScore),
-      구조분석: updateTheta(thetas.구조분석, mission.scores.구조분석, rawScore),
-      실행추진: updateTheta(thetas.실행추진, mission.scores.실행추진, rawScore),
-    }
-
-    // UCB reward 기록 (mainAxis에만)
+    // mainAxis 능력치만 업데이트 (다른 축은 해당 미션이 측정하지 않음)
     const mainAxis = mission.mainAxis
+    const newThetas: Theta = {
+      ...thetas,
+      [mainAxis]: updateTheta(thetas[mainAxis], mission.scores[mainAxis], rawScore),
+    }
 
     // 캡션용 IRT 업데이트 기록
     const irtCaption = getIrtDetail(thetas[mainAxis], mission.scores[mainAxis], rawScore)
