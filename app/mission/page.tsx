@@ -66,15 +66,20 @@ export default function MissionPage() {
 
   // 마운트 시 localStorage에서 IRT 상태 복원 후 첫 미션 선택
   useEffect(() => {
-    const savedThetas: Theta = (() => {
-      try { return JSON.parse(localStorage.getItem('uncovering_thetas') ?? '') } catch { return initialTheta }
-    })()
-    const savedHistory: Record<string, number[]> = (() => {
-      try { return JSON.parse(localStorage.getItem('uncovering_axis_history') ?? '') } catch { return {} }
-    })()
     const savedIds: number[] = (() => {
       try { return JSON.parse(localStorage.getItem('uncovering_completed_ids') ?? '') } catch { return [] }
     })()
+
+    // 완료된 미션이 없으면 새 세션 — 초기값으로 시작
+    const isResuming = savedIds.length > 0
+
+    const savedThetas: Theta = isResuming ? (() => {
+      try { return JSON.parse(localStorage.getItem('uncovering_thetas') ?? '') } catch { return initialTheta }
+    })() : initialTheta
+
+    const savedHistory: Record<string, number[]> = isResuming ? (() => {
+      try { return JSON.parse(localStorage.getItem('uncovering_axis_history') ?? '') } catch { return {} }
+    })() : {}
 
     setThetas(savedThetas)
     setAxisHistory(savedHistory)
@@ -257,10 +262,9 @@ export default function MissionPage() {
                 <TechCaption
                   label="Contextual Bandit (UCB) — 미션 선택"
                   lines={[
-                    `선택된 축: ${ucbDetail.selectedAxis}`,
                     ucbDetail.isUnexplored
-                      ? 'UCB 점수 = ∞  (미탐색 — 한 번도 안 한 축을 우선 탐색)'
-                      : `UCB = 평균보상 ${ucbDetail.avgReward!.toFixed(2)} + 탐색보너스 ${ucbDetail.explorationBonus!.toFixed(2)} = ${ucbDetail.ucbScore!.toFixed(2)}`,
+                      ? `'${ucbDetail.selectedAxis}' 선택 — 아직 탐색하지 않은 축 우선`
+                      : `'${ucbDetail.selectedAxis}' 선택 — UCB 점수 최고 (평균보상 ${ucbDetail.avgReward!.toFixed(2)}, 탐색보너스 ${ucbDetail.explorationBonus!.toFixed(2)})`,
                   ]}
                 />
                 <TechCaption
@@ -402,28 +406,17 @@ export default function MissionPage() {
               </p>
             </div>
 
-            {lastIrtChange && lastUcbReward && (() => {
-              const nextUcb = getUcbDetail(axisHistory)
-              return (
-                <div className="space-y-2 mb-4">
-                  <TechCaption
-                    label="IRT — 능력치 업데이트 완료"
-                    lines={[
-                      `θ(${lastIrtChange.axis}): ${lastIrtChange.oldTheta.toFixed(2)} → ${lastIrtChange.newTheta.toFixed(2)}`,
-                    ]}
-                  />
-                  <TechCaption
-                    label="Contextual Bandit — 보상 기록 & 다음 탐색"
-                    lines={[
-                      `'${lastUcbReward.axis}' 보상 u=${lastUcbReward.u.toFixed(2)} 기록 (${lastUcbReward.count}회째 탐색)`,
-                      nextUcb.isUnexplored
-                        ? `다음: '${nextUcb.selectedAxis}' 미탐색 → UCB=∞`
-                        : `다음: '${nextUcb.selectedAxis}' UCB=${nextUcb.ucbScore!.toFixed(2)}`,
-                    ]}
-                  />
-                </div>
-              )
-            })()}
+            {lastIrtChange && lastUcbReward && (
+              <div className="mb-4">
+                <TechCaption
+                  label="미션 완료 — 업데이트"
+                  lines={[
+                    `u = ${lastUcbReward.u.toFixed(2)}`,
+                    `θ(${lastIrtChange.axis}): ${lastIrtChange.oldTheta.toFixed(2)} → ${lastIrtChange.newTheta.toFixed(2)}`,
+                  ]}
+                />
+              </div>
+            )}
 
             <button
               onClick={handleNextMission}
