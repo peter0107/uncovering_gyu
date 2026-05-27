@@ -10,6 +10,7 @@ CREATE TABLE users (
   push_token    TEXT,                        -- Expo 푸시 토큰
   current_day   INT NOT NULL DEFAULT 1,      -- 현재 진행 일차 (1~7)
   started_at    TIMESTAMPTZ,                 -- 프로그램 시작 시각
+  day_completed_at TIMESTAMPTZ,              -- 해당 일차 완료 시각
   is_active     BOOLEAN NOT NULL DEFAULT true,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -48,15 +49,26 @@ CREATE TABLE user_missions (
 CREATE TABLE responses (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  user_mission_id UUID NOT NULL REFERENCES user_missions(id),
-  mission_id      UUID NOT NULL REFERENCES missions(id),
+  user_mission_id UUID REFERENCES user_missions(id),
+  mission_id      UUID REFERENCES missions(id),
   day             INT NOT NULL,
+  mission_order   INT NOT NULL,
   response_text   TEXT NOT NULL,
+  nickname        TEXT,
+  fun_rating      INT,
+  burden_rating   INT,
+  immersion_rating INT,
+  retry_rating    INT,
+  feeling_text    TEXT,
   submitted_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
   -- 운영자 채점 후 기입
+  admin_score     INT,
+  admin_comment   TEXT,
+  reviewed_at     TIMESTAMPTZ,
   axis_scores     JSONB,                    -- {"착수형": 2, "분석형": 3, ...}  0~4 스케일
   scored_at       TIMESTAMPTZ,
-  UNIQUE(user_id, user_mission_id)
+  UNIQUE(user_id, user_mission_id),
+  UNIQUE(user_id, day, mission_order)
 );
 
 -- 5. theta 추정값 (행동축별 사용자 현재 수준)
@@ -87,6 +99,7 @@ CREATE TABLE reports (
 
 CREATE INDEX idx_user_missions_user_day ON user_missions(user_id, day);
 CREATE INDEX idx_responses_user_id ON responses(user_id);
+CREATE INDEX idx_responses_user_day_order ON responses(user_id, day, mission_order);
 CREATE INDEX idx_responses_scored ON responses(scored_at) WHERE scored_at IS NULL;
 CREATE INDEX idx_reports_undelivered ON reports(is_delivered) WHERE is_delivered = false;
 CREATE INDEX idx_theta_user ON theta_estimates(user_id);
@@ -127,6 +140,7 @@ CREATE POLICY "reports_own" ON reports
   FOR SELECT USING (user_id = auth.uid());
 
 -- users: 본인 것만 읽기/업데이트
+CREATE POLICY "users_own_insert" ON users FOR INSERT WITH CHECK (id = auth.uid());
 CREATE POLICY "users_own_read"   ON users FOR SELECT USING (id = auth.uid());
 CREATE POLICY "users_own_update" ON users FOR UPDATE USING (id = auth.uid());
 
